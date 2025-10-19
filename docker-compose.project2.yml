@@ -1,0 +1,41 @@
+services:
+  mcp-jira-project2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mcp-jira:latest
+    container_name: mcp-jira-project2
+    
+    # Expose HTTP port on different port
+    ports:
+      - "9002:9001"
+    
+    # Load environment from project-specific file
+    env_file:
+      - .env.project2
+    
+    # MCP server settings
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 9001
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/sse"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+

@@ -1,0 +1,44 @@
+services:
+  mcp-jira:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mcp-jira:latest
+    container_name: mcp-jira
+    
+    # Expose HTTP port
+    ports:
+      - "9001:9001"
+    
+    # Environment variables
+    environment:
+      # Jira credentials
+      JIRA_URL: ${JIRA_URL}
+      JIRA_EMAIL: ${JIRA_EMAIL}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN}
+      JIRA_DEFAULT_PROJECT: ${JIRA_DEFAULT_PROJECT:-}
+      # MCP server settings
+      MCP_TRANSPORT: sse
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 9001
+      FASTMCP_LOG_LEVEL: ${FASTMCP_LOG_LEVEL:-INFO}
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/sse"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+

@@ -1,0 +1,37 @@
+[project]
+name = "mcp-jira"
+version = "0.1.0"
+description = "Python MCP server for Jira Cloud, exposing issue management operations"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Nemanja Milenković" }
+]
+keywords = ["mcp", "jira", "model context protocol", "anthropic", "stdio"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+dependencies = [
+  "mcp[cli]>=1.2.0",
+  "atlassian-python-api>=3.41.0",
+  "httpx>=0.27",
+  "pydantic>=2.7",
+  "structlog>=24.1.0",
+  "uvicorn>=0.30.0",
+  "starlette>=0.37.0"
+]
+
+[project.scripts]
+"mcp-jira" = "cli:main"
+
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Install the contents of `src/` as top-level modules
+force-include = { "src" = "." }
+
+

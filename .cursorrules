@@ -1,0 +1,192 @@
+# Jira MCP Server - Project Intelligence
+
+## Project Overview
+Python MCP server for Jira Cloud API, built with FastMCP and atlassian-python-api. Mirrors the architecture of mcp-bitbucket but adapted for Jira issue management.
+
+## Key Architecture Patterns
+
+### Source Layout
+- `src/` layout with top-level modules (not a package)
+- Build system uses hatchling with `force-include = { "src" = "." }`
+- Entry point: `mcp-jira` → `cli:main`
+
+### Module Organization
+- `config.py` - Environment-based configuration
+- `jira_client.py` - Wrapper around atlassian-python-api
+- `server.py` - MCP server with FastMCP tools
+- `cli.py` - CLI entry point with transport selection
+- `app.py` - MCP Inspector support
+
+### MCP Tool Pattern
+```python
+@s.tool()
+def toolName(
+    param: Annotated[Type, Field(description="...")],
+) -> Dict[str, Any]:
+    """Tool description."""
+    return self._safe(lambda: self.tool_implementation(...))
+```
+
+### Error Handling
+- All tool calls wrapped in `_safe()` method
+- Returns: `{"success": bool, "data"/"error": Any}`
+- Structured logging with structlog
+
+### Transport Modes
+- **stdio**: Default for CLI, development
+- **sse**: HTTP/SSE for Docker, production
+- CLI args: `--transport`, `--port` (9001), `--host`
+- Env vars: `MCP_TRANSPORT`, `MCP_PORT`, `MCP_HOST`
+
+## Configuration
+
+### Required Environment Variables
+- `JIRA_URL` - Jira Cloud instance URL
+- `JIRA_EMAIL` - Account email
+- `JIRA_API_TOKEN` - API token from Atlassian
+
+### Optional
+- `JIRA_DEFAULT_PROJECT` - Default project key
+- `FASTMCP_LOG_LEVEL` - Logging level (DEBUG, INFO, WARNING, ERROR)
+
+## Docker Deployment
+
+### Port Assignment
+- **9001**: Default port (vs Bitbucket's 9000)
+- Multi-project: 9001, 9002, etc.
+
+### File Structure
+- `Dockerfile` - Python 3.10-slim, uv, non-root user
+- `docker-compose.yml` - Single instance
+- `docker-compose.project{N}.yml` - Multi-project configs
+- `.env.example` - Environment template
+- `.dockerignore` - Optimize build (exclude memory-bank, tests)
+
+### Health Check
+- Endpoint: `http://localhost:9001/sse`
+- Interval: 30s, timeout: 10s, retries: 3
+
+## Development Workflow
+
+### Testing with MCP Inspector
+```bash
+JIRA_URL='...' JIRA_EMAIL='...' JIRA_API_TOKEN='...' \
+uv run --with mcp mcp dev src/app.py --with-editable .
+```
+
+### Running Locally
+```bash
+# stdio (development)
+JIRA_URL='...' JIRA_EMAIL='...' JIRA_API_TOKEN='...' uv run mcp-jira
+
+# SSE (production-like)
+JIRA_URL='...' JIRA_EMAIL='...' JIRA_API_TOKEN='...' \
+uv run mcp-jira --transport sse --port 9001
+```
+
+### Docker Build & Run
+```bash
+docker compose up -d --build
+docker logs -f mcp-jira
+curl http://localhost:9001/sse
+```
+
+## Code Conventions
+
+### Imports
+- Use `from __future__ import annotations` for forward references
+- Standard library → Third-party → Local modules
+- Relative imports for local modules
+
+### Type Hints
+- All functions have type hints
+- Use `Optional[T]` for nullable types
+- Use `Dict[str, Any]` for JSON-like data
+- Use `Annotated[Type, Field(...)]` for MCP tool parameters
+
+### Error Messages
+- User-facing errors should be clear and actionable
+- Include context (issue key, project, etc.)
+- Suggest solutions when possible
+
+## Common Patterns
+
+### Adding New Tools
+1. Add method to `JiraClient` for API operation
+2. Add `@s.tool()` decorated function in `JiraMcpServer._register_tools()`
+3. Add implementation method `tool_*` in `JiraMcpServer`
+4. Use `_safe()` wrapper for error handling
+5. Update README.md tools list
+
+### Handling Optional Fields
+- Use `additional_fields: Optional[str]` for JSON string
+- Parse with `json.loads()` and validate
+- Merge with base fields dict
+
+### Jira API Patterns
+- Use `atlassian-python-api` methods when available
+- Keep client layer thin (minimal transformation)
+- Return raw API responses when possible
+- Handle pagination in client layer
+
+## Memory Bank
+
+### When to Update
+- After implementing significant features
+- When architectural decisions change
+- After resolving major issues
+- When adding new patterns
+
+### Key Files
+- `projectbrief.md` - Project goals and scope
+- `systemPatterns.md` - Architecture and patterns
+- `activeContext.md` - Current focus and decisions
+- `progress.md` - Status and todo items
+
+## Testing Strategy
+
+### Manual Testing
+1. Use MCP Inspector for tool validation
+2. Test Docker build and health check
+3. Verify Cursor integration
+4. Test common workflows (create, search, transition, comment)
+
+### Key Test Cases
+- Health check with and without connectivity
+- Create issue with minimal fields
+- Create issue with all optional fields
+- Search with simple and complex JQL
+- Transition issue (get transitions → transition)
+- Add comment and retrieve comments
+- Error handling (invalid issue key, bad credentials)
+
+## Troubleshooting
+
+### Common Issues
+- **Import errors**: Check `src/` is treated as top-level modules
+- **Auth failures**: Verify API token and email are correct
+- **Connection errors**: Check JIRA_URL format (include https://, no trailing slash)
+- **Port conflicts**: Ensure 9001 is not in use
+
+### Debugging
+- Set `FASTMCP_LOG_LEVEL=DEBUG` for verbose logging
+- Check Docker logs: `docker logs mcp-jira`
+- Test connectivity: `curl https://your-domain.atlassian.net`
+- Use MCP Inspector for isolated tool testing
+
+## Future Enhancements
+
+### Planned
+- Board and sprint operations
+- Issue linking support
+- Advanced attachment handling
+- Bulk operations
+- JQL query builder helpers
+
+### Considerations
+- Rate limiting and retry logic
+- Response caching for performance
+- Custom field helpers per project
+- Webhook support for real-time updates
+- More comprehensive error recovery
+
