@@ -91,8 +91,11 @@ class JiraClient:
         comment: Optional[str] = None,
     ) -> Any:
         """Transition an issue to a new status."""
-        # Perform the transition
-        result = self._client.set_issue_status(issue_key, transition_id, fields=fields)
+        # Convert transition_id to int (Jira API requires integer)
+        transition_id_int = int(transition_id)
+        
+        # Perform the transition (must pass as keyword argument)
+        result = self._client.set_issue_status(issue_key, transition_id=transition_id_int, fields=fields)
         
         # Add comment separately if provided (set_issue_status doesn't support comment parameter)
         if comment:
