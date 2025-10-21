@@ -77,7 +77,11 @@ class JiraClient:
     def get_transitions(self, issue_key: str) -> List[Dict[str, Any]]:
         """Get available transitions for an issue."""
         result = self._client.get_issue_transitions(issue_key)
-        return result.get("transitions", [])
+        # atlassian-python-api returns a list directly, not a dict
+        if isinstance(result, list):
+            return result
+        # Fallback for dict format (older versions or different endpoints)
+        return result.get("transitions", []) if isinstance(result, dict) else []
 
     def transition_issue(
         self,
@@ -87,19 +91,14 @@ class JiraClient:
         comment: Optional[str] = None,
     ) -> Any:
         """Transition an issue to a new status."""
-        transition_data: Dict[str, Any] = {
-            "transition": {"id": transition_id}
-        }
+        # Perform the transition
+        result = self._client.set_issue_status(issue_key, transition_id, fields=fields)
         
-        if fields:
-            transition_data["fields"] = fields
-        
+        # Add comment separately if provided (set_issue_status doesn't support comment parameter)
         if comment:
-            transition_data["update"] = {
-                "comment": [{"add": {"body": comment}}]
-            }
+            self._client.issue_add_comment(issue_key, comment)
         
-        return self._client.set_issue_status(issue_key, transition_id, fields=fields, comment=comment)
+        return result
 
     # ---------- Comment operations ----------
     def add_comment(self, issue_key: str, comment: str) -> Any:
