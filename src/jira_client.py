@@ -91,15 +91,28 @@ class JiraClient:
         comment: Optional[str] = None,
     ) -> Any:
         """Transition an issue to a new status."""
-        # Convert transition_id to int (Jira API requires integer)
-        transition_id_int = int(transition_id)
+        # Build transition payload
+        transition_data = {"transition": {"id": transition_id}}
         
-        # Perform the transition (must pass as keyword argument)
-        result = self._client.set_issue_status(issue_key, transition_id=transition_id_int, fields=fields)
+        # Add fields if provided
+        if fields:
+            transition_data["fields"] = fields
         
-        # Add comment separately if provided (set_issue_status doesn't support comment parameter)
+        # Add comment if provided
         if comment:
-            self._client.issue_add_comment(issue_key, comment)
+            transition_data["update"] = {
+                "comment": [
+                    {
+                        "add": {
+                            "body": comment
+                        }
+                    }
+                ]
+            }
+        
+        # Use the REST API method directly
+        url = f"rest/api/3/issue/{issue_key}/transitions"
+        result = self._client.post(url, data=transition_data)
         
         return result
 
