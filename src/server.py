@@ -8,7 +8,7 @@ from pydantic import Field
 import structlog
 from mcp.server.fastmcp import FastMCP
 
-from jira_client import JiraClient
+from jira_client import JiraClient, text_to_adf
 from config import JiraConfig
 
 
@@ -297,7 +297,8 @@ class JiraMcpServer:
                 extra = json.loads(additional_fields)
                 fields.update(extra)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in additional_fields: {e}")
+                # Provide more helpful error message with the actual content
+                raise ValueError(f"Invalid JSON in additional_fields: {e}. Content received: '{additional_fields}'")
         
         return self._client.create_issue(
             project=project,
@@ -324,7 +325,7 @@ class JiraMcpServer:
             fields["summary"] = summary
         
         if description:
-            fields["description"] = description
+            fields["description"] = text_to_adf(description)
         
         if priority:
             fields["priority"] = {"name": priority}
@@ -345,7 +346,8 @@ class JiraMcpServer:
                 extra = json.loads(additional_fields)
                 fields.update(extra)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in additional_fields: {e}")
+                # Provide more helpful error message with the actual content
+                raise ValueError(f"Invalid JSON in additional_fields: {e}. Content received: '{additional_fields}'")
         
         if not fields:
             raise ValueError("At least one field must be provided for update")
@@ -373,7 +375,8 @@ class JiraMcpServer:
             try:
                 fields = json.loads(additional_fields)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON in additional_fields: {e}")
+                # Provide more helpful error message with the actual content
+                raise ValueError(f"Invalid JSON in additional_fields: {e}. Content received: '{additional_fields}'")
         
         return self._client.transition_issue(
             issue_key=issue_key,

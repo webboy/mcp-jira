@@ -12,6 +12,32 @@ from config import JiraConfig
 logger = structlog.get_logger(__name__)
 
 
+def text_to_adf(text: str) -> Dict[str, Any]:
+    """Convert plain text to Atlassian Document Format (ADF).
+    
+    Args:
+        text: Plain text string to convert
+        
+    Returns:
+        ADF document structure
+    """
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": text
+                    }
+                ]
+            }
+        ]
+    }
+
+
 class JiraClient:
     """Wrapper around atlassian-python-api's Jira client.
     
@@ -50,7 +76,7 @@ class JiraClient:
         issue_fields = {
             "project": {"key": project},
             "summary": summary,
-            "description": description,
+            "description": text_to_adf(description),
             "issuetype": {"name": issue_type},
         }
         
@@ -104,7 +130,7 @@ class JiraClient:
                 "comment": [
                     {
                         "add": {
-                            "body": comment
+                            "body": text_to_adf(comment)
                         }
                     }
                 ]
@@ -119,7 +145,15 @@ class JiraClient:
     # ---------- Comment operations ----------
     def add_comment(self, issue_key: str, comment: str) -> Any:
         """Add a comment to an issue."""
-        return self._client.issue_add_comment(issue_key, comment)
+        # Use REST API directly with ADF format for API v3 compatibility
+        comment_data = {
+            "body": text_to_adf(comment)
+        }
+        
+        url = f"rest/api/3/issue/{issue_key}/comment"
+        result = self._client.post(url, data=comment_data)
+        
+        return result
 
     def get_comments(self, issue_key: str) -> List[Dict[str, Any]]:
         """Get all comments for an issue."""
