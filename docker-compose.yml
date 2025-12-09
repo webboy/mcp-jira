@@ -23,9 +23,9 @@ services:
       MCP_PORT: 9001
       FASTMCP_LOG_LEVEL: ${FASTMCP_LOG_LEVEL:-INFO}
     
-    # Health check
+    # Health check - check if SSE endpoint responds (it streams, so we check for initial response then exit)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9001/sse"]
+      test: ["CMD-SHELL", "curl -f -s --max-time 2 -N http://localhost:9001/sse 2>&1 | head -n 1 | grep -q 'event:' && exit 0 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
